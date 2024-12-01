@@ -13,7 +13,7 @@ datasource db {
   url      = env("DATABASE_URL")
 } 
 
-model Role{
+model Role{ 
   id Int @id @default(autoincrement())
   name String @unique
 

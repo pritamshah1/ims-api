@@ -6,55 +6,58 @@ import { PrismaService } from 'src/prisma/prisma.service';
 @Injectable()
 export class RolesService {
   constructor(private readonly prismaService: PrismaService) {}
-  
 
   async create(createRoleDto: CreateRoleDto) {
-    const role =await this.prismaService.role.findFirst({
-      where:{ name: createRoleDto.name },
-    });
-
-    if (role){
-      throw new BadRequestException(`Role ${role.name} already exists`)
-    }
+    await this.checkIfRoleExists(createRoleDto.name);
     return this.prismaService.role.create({ data: createRoleDto });
   }
 
   async findAll() {
-    return this.prismaService.role.findMany(); 
+    return this.prismaService.role.findMany();
   }
 
   async findOne(id: number) {
-    const role = await this.prismaService.role.findFirst({where:{id}});
+    return this.getRole(id);
+  }
 
-    if(!role){
+  async update(id: number, updateRoleDto: UpdateRoleDto) {
+    await this.getRole(id);
+    await this.checkIfRoleExists(updateRoleDto.name, id);
+    return this.prismaService.role.update({
+      where: { id },
+      data: updateRoleDto,
+    });
+  }
+
+  async remove(id: number) {
+    await this.getRole(id);
+    return this.prismaService.role.delete({ where: { id } });
+  }
+
+  private async getRole(id: number) {
+    const role = await this.prismaService.role.findFirst({ where: { id } });
+
+    if (!role) {
       throw new NotFoundException('Role not found');
     }
 
     return role;
   }
 
-  async update(id: number, updateRoleDto: UpdateRoleDto) {
-    const role = await this.prismaService.role.findFirst({where:{id}});
-
-    if(!role){
-      throw new NotFoundException('Role not found');
-    }
-
-    const doesRoleExist =await this.prismaService.role.findFirst({
-      where:{ name: updateRoleDto.name },
+  private async checkIfRoleExists(name: string, id?: number) {
+    const doesRoleExist = await this.prismaService.role.findFirst({
+      where: { name },
     });
 
-    if (doesRoleExist && doesRoleExist.id !== id){
-      throw new BadRequestException(`Role ${role.name} already exists`)
+    if (doesRoleExist) {
+      if (id && doesRoleExist.id !== id) {
+        // this is update case
+        throw new BadRequestException(`Role ${name} already exists`);
+      } else if (!id) {
+        // this is create case
+        throw new BadRequestException(`Role ${name} already exists`);
+      }
     }
-  
-    return this.prismaService.role.update({
-      where: {id},
-      data: updateRoleDto,
-    })
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} role`;
   }
 }
+
